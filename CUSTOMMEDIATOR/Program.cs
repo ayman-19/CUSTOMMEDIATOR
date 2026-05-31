@@ -12,7 +12,6 @@ public class Program
         builder.Services.AddAuthorization();
         builder.Services.AddControllers();
         builder.Services.AddOpenApi();
-        //builder.Services.AddValidatorsFromAssemblyContaining<Program>();
         builder.Services.AddMediator(typeof(Program).Assembly);
         builder.Services.AddSwaggerGen();
 
@@ -34,16 +33,6 @@ public class Program
                 return Results.Ok(response);
             }
         );
-
-        app.MapPost(
-            "/api/v2/add",
-            async (IMediator mediator, AddCommand command) =>
-            {
-                var response = await mediator.Send<AddCommand, double>(command);
-                return Results.Ok(response);
-            }
-        );
-
         app.Run();
     }
 }

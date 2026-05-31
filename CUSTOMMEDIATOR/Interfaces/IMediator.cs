@@ -6,16 +6,4 @@ public interface IMediator
         IRequest<TResponse> request,
         CancellationToken cancellationToken = default
     );
-
-    Task<TResponse> Send<TRequest, TResponse>(
-        TRequest request,
-        CancellationToken cancellationToken = default
-    )
-        where TRequest : IRequest<TResponse>;
-
-    Task Publish<TNotification>(
-        TNotification notification,
-        CancellationToken cancellationToken = default
-    )
-        where TNotification : INotification;
 }
