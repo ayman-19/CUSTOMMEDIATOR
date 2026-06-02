@@ -1,6 +1,6 @@
-﻿using CUSTOMMEDIATOR.Interfaces;
+﻿using MediatR;
 
-namespace CUSTOMMEDIATOR.Commands.Add;
+namespace Mediator.Commands.Add;
 
 public sealed class AddCommandHandler : IRequestHandler<AddCommand, double>
 {

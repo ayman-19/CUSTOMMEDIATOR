@@ -1,3 +1,3 @@
 ﻿namespace CUSTOMMEDIATOR.Interfaces;
 
-public interface IRequest<out TResponse> { }
+public interface IRequest<TResponse>;

@@ -1,146 +1,78 @@
-﻿using CUSTOMMEDIATOR.Interfaces;
+﻿using System.Collections.Concurrent;
+using System.Linq.Expressions;
+using CUSTOMMEDIATOR.Interfaces;
 
 namespace CUSTOMMEDIATOR.Implementations;
 
-public class Mediator(IServiceProvider _serviceProvider) : IMediator
+public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
 {
-    public async Task<TResponse> Send<TResponse>(
+    public Task<TResponse> Send<TResponse>(
         IRequest<TResponse> request,
         CancellationToken cancellationToken = default
     )
     {
-        var requestType = request.GetType();
-        var handlerType = typeof(IRequestHandler<,>).MakeGenericType(
-            requestType,
-            typeof(TResponse)
+        ArgumentNullException.ThrowIfNull(request);
+
+        var handler = serviceProvider.GetRequiredService(
+            HandlerCache<TResponse>.HandlerType(request.GetType())
         );
 
-        var handler = _serviceProvider.GetService(handlerType);
-        if (handler == null)
-            throw new InvalidOperationException($"No handler registered for {requestType.Name}");
+        return InvokerCache<TResponse>
+            .GetOrAdd(request.GetType())
+            .Invoke(handler, request, cancellationToken);
+    }
 
-        var behaviorType = typeof(IPipelineBehavior<,>).MakeGenericType(
-            requestType,
-            typeof(TResponse)
+    private static class HandlerCache<TResponse>
+    {
+        private static readonly ConcurrentDictionary<Type, Type> _map = new();
+
+        public static Type HandlerType(Type requestType) =>
+            _map.GetOrAdd(
+                requestType,
+                static t => typeof(IRequestHandler<,>).MakeGenericType(t, typeof(TResponse))
+            );
+    }
+
+    private static class InvokerCache<TResponse>
+    {
+        internal delegate Task<TResponse> HandlerInvoker(
+            object handler,
+            IRequest<TResponse> request,
+            CancellationToken ct
         );
 
-        var behaviors = _serviceProvider.GetServices(behaviorType).Cast<object>();
+        private static readonly ConcurrentDictionary<Type, HandlerInvoker> _map = new();
 
-        RequestHandlerDelegate<TResponse> pipeline = () =>
+        public static HandlerInvoker GetOrAdd(Type requestType) =>
+            _map.TryGetValue(requestType, out var invoker)
+                ? invoker
+                : _map.GetOrAdd(requestType, Compile);
+
+        private static HandlerInvoker Compile(Type requestType)
         {
-            var method = handlerType.GetMethod(
-                nameof(IRequestHandler<IRequest<TResponse>, TResponse>.Handle)
-            );
-            return (Task<TResponse>)
-                method.Invoke(handler, new object[] { request, cancellationToken });
-        };
-
-        foreach (var behavior in behaviors.Reverse())
-        {
-            var currentPipeline = pipeline;
-            var behaviorHandleMethod = behavior
-                .GetType()
-                .GetMethod(nameof(IPipelineBehavior<,>.Handle));
-
-            pipeline = () =>
-                (Task<TResponse>)
-                    behaviorHandleMethod.Invoke(
-                        behavior,
-                        new object[] { request, currentPipeline, cancellationToken }
-                    );
-        }
-
-        return await pipeline();
-    }
-
-    public async Task<TResponse> Send<TRequest, TResponse>(
-        TRequest request,
-        CancellationToken cancellationToken = default
-    )
-        where TRequest : IRequest<TResponse>
-    {
-        var handler = _serviceProvider.GetService<IRequestHandler<TRequest, TResponse>>();
-        if (handler == null)
-            throw new InvalidOperationException(
-                $"No handler registered for {typeof(TRequest).Name}"
+            var handlerType = typeof(IRequestHandler<,>).MakeGenericType(
+                requestType,
+                typeof(TResponse)
             );
 
-        var behaviors = _serviceProvider.GetServices<IPipelineBehavior<TRequest, TResponse>>();
+            var method = handlerType.GetMethod(nameof(IRequestHandler<,>.Handle))!;
 
-        RequestHandlerDelegate<TResponse> pipeline = () =>
-            handler.Handle(request, cancellationToken);
+            var handler = Expression.Parameter(typeof(object), "handler");
 
-        foreach (var behavior in behaviors.Reverse())
-        {
-            var currentPipeline = pipeline;
-            pipeline = () => behavior.Handle(request, currentPipeline, cancellationToken);
-        }
+            var request = Expression.Parameter(typeof(IRequest<TResponse>), "request");
 
-        return await pipeline();
-    }
+            var cancellationToken = Expression.Parameter(typeof(CancellationToken), "ct");
 
-    public async Task Publish<TNotification>(
-        TNotification notification,
-        CancellationToken cancellationToken = default
-    )
-        where TNotification : INotification
-    {
-        var handlerType = typeof(INotificationHandler<>).MakeGenericType(notification.GetType());
-        var handlers = _serviceProvider.GetServices(handlerType);
-
-        var tasks = new List<Task>();
-        foreach (var handler in handlers)
-        {
-            var method = handlerType.GetMethod("Handle");
-            tasks.Add(
-                (Task)method.Invoke(handler, new object[] { notification, cancellationToken })
+            var body = Expression.Call(
+                Expression.Convert(handler, handlerType),
+                method,
+                Expression.Convert(request, requestType),
+                cancellationToken
             );
-        }
 
-        await Task.WhenAll(tasks);
+            return Expression
+                .Lambda<HandlerInvoker>(body, handler, request, cancellationToken)
+                .Compile();
+        }
     }
 }
-
-
-//public class Mediator : IMediator
-//{
-//    private readonly IServiceProvider _provider;
-
-//    public Mediator(IServiceProvider provider)
-//    {
-//        _provider = provider;
-//    }
-
-//    public Task Publish<TNotification>(
-//        TNotification notification,
-//        CancellationToken cancellationToken = default
-//    )
-//        where TNotification : INotification
-//    {
-//        throw new NotImplementedException();
-//    }
-
-//    public async Task<TResponse> Send<TResponse>(
-//        IRequest<TResponse> request,
-//        CancellationToken ct = default
-//    )
-//    {
-//        // Build the handler type dynamically
-//        var handlerType = typeof(IRequestHandler<,>).MakeGenericType(
-//            request.GetType(),
-//            typeof(TResponse)
-//        );
-
-//        // Resolve from DI
-//        var handler = _provider.GetRequiredService(handlerType);
-
-//        // Invoke HandleAsync via reflection
-//        var method = handlerType.GetMethod(
-//            nameof(IRequestHandler<IRequest<TResponse>, TResponse>.Handle)
-//        )!;
-
-//        var task = (Task<TResponse>)method.Invoke(handler, new object[] { request, ct })!;
-
-//        return await task;
-//    }
-//}
