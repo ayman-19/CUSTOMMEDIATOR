@@ -12,7 +12,6 @@ public class Program
         builder.Services.AddAuthorization();
         builder.Services.AddControllers();
         builder.Services.AddOpenApi();
-        //builder.Services.AddMediator(typeof(Program).Assembly);
         builder.Services.AddMediator();
         builder.Services.AddSwaggerGen();
 

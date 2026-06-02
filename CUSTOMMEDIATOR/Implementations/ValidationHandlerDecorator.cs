@@ -1,5 +1,6 @@
 ﻿using CUSTOMMEDIATOR.Interfaces;
 using FluentValidation;
+using FluentValidation.Results;
 
 namespace CUSTOMMEDIATOR.Implementations;
 
@@ -14,20 +15,18 @@ public class ValidationHandlerDecorator<TRequest, TResponse>(
         CancellationToken cancellationToken = default
     )
     {
-        if (validators.Any())
+        if (validators != null && validators.Any())
         {
             var context = new ValidationContext<TRequest>(request);
+            List<ValidationFailure> failures = new();
 
-            var validationResults = await Task.WhenAll(
-                validators.Select(v => v.ValidateAsync(context, cancellationToken))
-            );
-
-            var failures = validationResults
-                .SelectMany(r => r.Errors)
-                .Where(f => f != null)
-                .ToList();
-
-            if (failures.Count != 0)
+            foreach (var validator in validators)
+            {
+                var result = await validator.ValidateAsync(context, cancellationToken);
+                if (!result.IsValid)
+                    failures.AddRange(result.Errors);
+            }
+            if (failures.Any())
                 throw new ValidationException(failures);
         }
 

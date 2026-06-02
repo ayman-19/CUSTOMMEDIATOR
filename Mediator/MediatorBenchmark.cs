@@ -12,13 +12,10 @@ public class MediatorBenchmark
 {
     private IMediator _mediator = null!;
     CUSTOMMEDIATOR.Interfaces.IMediator _customMediator = null!;
-    private AddCommand _command = null!;
 
     [GlobalSetup]
     public void Setup()
     {
-        _command = new AddCommand(10.5, 20.3);
-
         var services = new ServiceCollection();
 
         services.AddLogging();
@@ -37,7 +34,7 @@ public class MediatorBenchmark
     }
 
     [Benchmark]
-    public Task<double> MediatorSend() => _mediator.Send(_command);
+    public Task<double> MediatorSend() => _mediator.Send(new AddCommand(10.5, 20.3));
 
     [Benchmark]
     public Task<double> CustomMediatorSend() =>

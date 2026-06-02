@@ -3,33 +3,29 @@ using MediatR;
 
 namespace Mediator;
 
-public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+public sealed class ValidationBehavior<TRequest, TResponse>(
+    IEnumerable<IValidator<TRequest>> validators
+) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
-    private readonly IEnumerable<IValidator<TRequest>> _validators;
-
-    public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
-    {
-        _validators = validators;
-    }
-
     public async Task<TResponse> Handle(
         TRequest request,
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken
     )
     {
-        if (_validators.Any())
+        if (validators != null && validators.Any())
         {
             var context = new ValidationContext<TRequest>(request);
+            List<FluentValidation.Results.ValidationFailure> failures = new();
 
-            var results = await Task.WhenAll(
-                _validators.Select(v => v.ValidateAsync(context, cancellationToken))
-            );
-
-            var failures = results.SelectMany(x => x.Errors).Where(x => x != null).ToList();
-
-            if (failures.Count != 0)
+            foreach (var validator in validators)
+            {
+                var result = await validator.ValidateAsync(context, cancellationToken);
+                if (!result.IsValid)
+                    failures.AddRange(result.Errors);
+            }
+            if (failures.Any())
                 throw new ValidationException(failures);
         }
 
