@@ -8,9 +8,18 @@ public static class MediatorExtensions
 {
     public static IServiceCollection AddMediator(this IServiceCollection services)
     {
+        // Handlers
         services.Scan(scan =>
             scan.FromAssemblies(typeof(MediatorExtensions).Assembly)
                 .AddClasses(c => c.AssignableTo(typeof(IRequestHandler<,>)), publicOnly: false)
+                .AsImplementedInterfaces()
+                .WithScopedLifetime()
+        );
+
+        // Pipelines
+        services.Scan(scan =>
+            scan.FromAssemblies(typeof(MediatorExtensions).Assembly)
+                .AddClasses(c => c.AssignableTo(typeof(IRequestPreProcessor<>)), publicOnly: false)
                 .AsImplementedInterfaces()
                 .WithScopedLifetime()
         );
