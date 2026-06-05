@@ -1,9 +1,9 @@
-﻿using CUSTOMMEDIATOR.Commands.Add;
-using CUSTOMMEDIATOR.Interfaces;
+﻿using Mediator.Commands.Add;
+using MediatR.Pipeline;
 
-namespace CUSTOMMEDIATOR.Pipelines;
+namespace Mediator.Pipelines;
 
-public class AddPipeline : IRequestPreProcessor<AddCommand>
+public sealed class AddPipeline : IRequestPreProcessor<AddCommand>
 {
     public Task Process(AddCommand command, CancellationToken cancellationToken)
     {

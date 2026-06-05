@@ -2,7 +2,9 @@
 using CUSTOMMEDIATOR;
 using FluentValidation;
 using Mediator.Commands.Add;
+using Mediator.Pipelines;
 using MediatR;
+using MediatR.Pipeline;
 
 namespace Mediator;
 
@@ -19,7 +21,14 @@ public class MediatorBenchmark
         var services = new ServiceCollection();
 
         services.AddLogging();
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AddCommandHandler>());
+        services.AddMediatR(cfg =>
+        {
+            cfg.RegisterServicesFromAssemblyContaining<AddCommandHandler>();
+            cfg.AddOpenBehavior(typeof(RequestPostProcessorBehavior<,>));
+            cfg.AddOpenBehavior(typeof(RequestPreProcessorBehavior<,>));
+        });
+        services.AddTransient<IRequestPostProcessor<AddCommand, double>, AddPostPipeline>();
+        services.AddScoped<IRequestPreProcessor<AddCommand>, AddPipeline>();
         services.AddValidatorsFromAssemblyContaining<AddCommandValidator>();
 
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
@@ -34,9 +43,9 @@ public class MediatorBenchmark
     }
 
     [Benchmark]
-    public Task<double> MediatorSend() => _mediator.Send(new AddCommand(10.5, 20.3));
+    public Task<double> MediatorSend() => _mediator.Send(new AddCommand { n1 = 10.5, n2 = 20.3 });
 
     [Benchmark]
     public Task<double> CustomMediatorSend() =>
-        _customMediator.Send(new CUSTOMMEDIATOR.Commands.Add.AddCommand(10.5, 20.3));
+        _customMediator.Send(new CUSTOMMEDIATOR.Commands.Add.AddCommand { n1 = 10.5, n2 = 20.3 });
 }

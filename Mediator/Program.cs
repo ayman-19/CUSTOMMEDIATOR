@@ -1,7 +1,9 @@
 using BenchmarkDotNet.Running;
 using FluentValidation;
 using Mediator.Commands.Add;
+using Mediator.Pipelines;
 using MediatR;
+using MediatR.Pipeline;
 
 namespace Mediator;
 
@@ -11,9 +13,17 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        //builder.Services.AddMediatR(cfg =>
+        //    cfg.RegisterServicesFromAssemblyContaining<AddCommandHandler>()
+        //);
         builder.Services.AddMediatR(cfg =>
-            cfg.RegisterServicesFromAssemblyContaining<AddCommandHandler>()
-        );
+        {
+            cfg.RegisterServicesFromAssemblyContaining<AddCommandHandler>();
+            cfg.AddOpenBehavior(typeof(RequestPostProcessorBehavior<,>));
+            cfg.AddOpenBehavior(typeof(RequestPreProcessorBehavior<,>));
+        });
+        builder.Services.AddTransient<IRequestPostProcessor<AddCommand, double>, AddPostPipeline>();
+        builder.Services.AddScoped<IRequestPreProcessor<AddCommand>, AddPipeline>();
         builder.Services.AddValidatorsFromAssemblyContaining<AddCommandValidator>();
 
         builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

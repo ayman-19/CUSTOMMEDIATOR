@@ -16,10 +16,21 @@ public static class MediatorExtensions
                 .WithScopedLifetime()
         );
 
-        // Pipelines
+        //Pre Processor Pipelines
         services.Scan(scan =>
             scan.FromAssemblies(typeof(MediatorExtensions).Assembly)
                 .AddClasses(c => c.AssignableTo(typeof(IRequestPreProcessor<>)), publicOnly: false)
+                .AsImplementedInterfaces()
+                .WithScopedLifetime()
+        );
+
+        //Post Processor Pipelines
+        services.Scan(scan =>
+            scan.FromAssemblies(typeof(MediatorExtensions).Assembly)
+                .AddClasses(
+                    c => c.AssignableTo(typeof(IRequestPostProcessor<,>)),
+                    publicOnly: false
+                )
                 .AsImplementedInterfaces()
                 .WithScopedLifetime()
         );
@@ -28,7 +39,7 @@ public static class MediatorExtensions
 
         services.AddScoped<IMediator, Mediator>();
 
-        services.Decorate(typeof(IRequestHandler<,>), typeof(ValidationHandlerDecorator<,>));
+        services.Decorate(typeof(IRequestHandler<,>), typeof(RequestPipelineDecorator<,>));
 
         return services;
     }
