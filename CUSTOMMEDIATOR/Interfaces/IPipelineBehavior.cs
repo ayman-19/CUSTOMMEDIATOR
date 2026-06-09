@@ -9,3 +9,7 @@ public interface IPipelineBehavior<TRequest, TResponse>
 		CancellationToken cancellationToken
 	);
 }
+
+public delegate Task<TResponse> RequestHandlerDelegate<TResponse>(
+	CancellationToken cancellationToken = default
+);
