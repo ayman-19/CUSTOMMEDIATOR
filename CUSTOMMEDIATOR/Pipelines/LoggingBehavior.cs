@@ -1,7 +1,7 @@
 ﻿using CUSTOMMEDIATOR.Interfaces;
 using System.Diagnostics;
 
-namespace CUSTOMMEDIATOR.Implementations;
+namespace CUSTOMMEDIATOR.Pipelines;
 
 public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
 	where TRequest : notnull
