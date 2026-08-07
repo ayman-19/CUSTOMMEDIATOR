@@ -1,5 +1,6 @@
 ﻿using CUSTOMMEDIATOR.Commands.Add;
 using CUSTOMMEDIATOR.Interfaces;
+using CUSTOMMEDIATOR.Notifications;
 
 namespace CUSTOMMEDIATOR;
 
@@ -11,7 +12,6 @@ public class Program
 
         builder.Services.AddAuthorization();
         builder.Services.AddControllers();
-        builder.Services.AddOpenApi();
         builder.Services.AddMediator();
         builder.Services.AddSwaggerGen();
 
@@ -31,6 +31,15 @@ public class Program
             {
                 var response = await mediator.Send(command);
                 return Results.Ok(response);
+            }
+        );
+
+        app.MapGet(
+            "/api/v1/notify",
+            async (IPublisher mediator) =>
+            {
+                await mediator.Publish(new PingNotification10());
+                return Results.Ok();
             }
         );
         app.Run();

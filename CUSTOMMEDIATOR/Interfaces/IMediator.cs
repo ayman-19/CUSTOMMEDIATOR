@@ -1,6 +1,6 @@
-﻿namespace CUSTOMMEDIATOR.Interfaces;
+namespace CUSTOMMEDIATOR.Interfaces;
 
-public interface IMediator
+public interface IMediator : IPublisher
 {
     Task<TResponse> Send<TResponse>(
         IRequest<TResponse> request,

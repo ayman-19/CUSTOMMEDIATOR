@@ -1,4 +1,4 @@
-﻿using CUSTOMMEDIATOR.Helpers;
+using CUSTOMMEDIATOR.Helpers;
 using CUSTOMMEDIATOR.Interfaces;
 
 namespace CUSTOMMEDIATOR.Implementations;
@@ -19,5 +19,17 @@ public sealed class Mediator(IServiceProvider serviceProvider) : IMediator
         return InvokerCache<TResponse>
             .GetOrAdd(request.GetType())
             .Invoke(handler, request, cancellationToken);
+    }
+
+    public Task Publish(
+        INotification notification,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        return NotificationInvokerCache
+            .GetOrAdd(notification.GetType())
+            .Invoke(serviceProvider, notification, cancellationToken);
     }
 }

@@ -1,4 +1,4 @@
-﻿using CUSTOMMEDIATOR.Implementations;
+using CUSTOMMEDIATOR.Implementations;
 using CUSTOMMEDIATOR.Interfaces;
 using CUSTOMMEDIATOR.Pipelines;
 using FluentValidation;
@@ -13,6 +13,13 @@ public static class MediatorExtensions
         services.Scan(scan =>
             scan.FromAssemblies(typeof(MediatorExtensions).Assembly)
                 .AddClasses(c => c.AssignableTo(typeof(IRequestHandler<,>)), publicOnly: false)
+                .AsImplementedInterfaces()
+                .WithScopedLifetime()
+        );
+
+        services.Scan(scan =>
+            scan.FromAssemblies(typeof(MediatorExtensions).Assembly)
+                .AddClasses(c => c.AssignableTo(typeof(INotificationHandler<>)), publicOnly: false)
                 .AsImplementedInterfaces()
                 .WithScopedLifetime()
         );
@@ -42,6 +49,8 @@ public static class MediatorExtensions
         services.AddValidatorsFromAssembly(typeof(MediatorExtensions).Assembly);
 
         services.AddScoped<IMediator, Mediator>();
+
+        services.AddScoped<IPublisher>(sp => sp.GetRequiredService<IMediator>());
 
         services.Decorate(typeof(IRequestHandler<,>), typeof(RequestPipelineDecorator<,>));
 
